@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>武吉拉 Bukira｜台股 & 美股分析</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 24px;
+      background: rgba(15, 23, 42, 0.96);
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      border: 1px solid #1f2937;
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 28px;
+      color: #facc15;
+    }
+    .subtitle {
+      color: #9ca3af;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    input {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #374151;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    button {
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      background: #22c55e;
+      color: #020617;
+      font-weight: 600;
+    }
+    button:hover {
+      background: #16a34a;
+    }
+    .tag-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .tag {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #4b5563;
+      font-size: 12px;
+      cursor: pointer;
+      color: #9ca3af;
+    }
+    .tag:hover {
+      border-color: #e5e7eb;
+      color: #e5e7eb;
+    }
+    .card {
+      margin-top: 12px;
+      padding: 16px;
+      border-radius: 14px;
+      background: #020617;
+      border: 1px solid #1f2937;
+      display: none;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+    .label {
+      color: #9ca3af;
+    }
+    .value {
+      font-weight: 600;
+    }
+    .trend-up {
+      color: #4ade80;
+    }
+    .trend-down {
+      color: #fb7185;
+    }
+    .note {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #9ca3af;
+      line-height: 1.6;
+    }
+    .error {
+      margin-top: 12px;
+      color: #f97373;
+      font-size: 14px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        margin: 12px;
+        padding: 16px;
+      }
+      .input-row {
+        flex-direction: column;
+      }
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>武吉拉 Bukira</h1>
+    <div class="subtitle">台股 & 美股｜簡易技術分析（支援 2330.TW / AAPL / TSLA...）</div>
+
+    <div class="input-row">
+      <input id="symbol" placeholder="輸入股票代碼，例如：2330.TW、2317.TW、AAPL、TSLA" />
+      <button onclick="search()">查詢</button>
+    </div>
+
+    <div class="tag-row">
+      <div class="tag" onclick="quick('2330.TW')">台積電 2330.TW</div>
+      <div class="tag" onclick="quick('2317.TW')">鴻海 2317.TW</div>
+      <div class="tag" onclick="quick('2454.TW')">聯發科 2454.TW</div>
+      <div class="tag" onclick="quick('AAPL')">Apple AAPL</div>
+      <div class="tag" onclick="quick('TSLA')">Tesla TSLA</div>
+      <div class="tag" onclick="quick('NVDA')">Nvidia NVDA</div>
+    </div>
+
+    <div id="error" class="error" style="display:none;"></div>
+
+    <div id="result" class="card">
+      <div class="row">
+        <div class="label">股票</div>
+        <div class="value" id="stock-name"></div>
+      </div>
+      <div class="row">
+        <div class="label">最新價格</div>
+        <div class="value" id="price"></div>
+      </div>
+      <div class="row">
+        <div class="label">昨收</div>
+        <div class="value" id="prev-close"></div>
+      </div>
+      <div class="row">
+        <div class="label">漲跌幅</div>
+        <div class="value" id="change"></div>
+      </div>
+      <div class="row">
+        <div class="label">MA5 / MA20</div>
+        <div class="value" id="ma"></div>
+      </div>
+      <div class="row">
+        <div class="label">成交量</div>
+        <div class="value" id="volume"></div>
+      </div>
+      <div class="row">
+        <div class="label">趨勢分析</div>
+        <div class="value" id="trend"></div>
+      </div>
+
+      <div class="note" id="note"></div>
+    </div>
+  </div>
+
+  <script>
+    function quick(code) {
+      document.getElementById("symbol").value = code;
+      search();
+    }
+
+    async function search() {
+      const symbol = document.getElementById("symbol").value.trim();
+      const errorDiv = document.getElementById("error");
+      const card = document.getElementById("result");
+
+      errorDiv.style.display = "none";
+      card.style.display = "none";
+
+      if (!symbol) {
+        errorDiv.innerText = "請先輸入股票代碼。";
+        errorDiv.style.display = "block";
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/stock?symbol=" + encodeURIComponent(symbol));
+        const data = await res.json();
+
+        if (data.error) {
+          errorDiv.innerText = data.error;
+          errorDiv.style.display = "block";
+          return;
+        }
+
+        const a = data.分析;
+        document.getElementById("stock-name").innerText = data.股票;
+        document.getElementById("price").innerText = a.最新價格;
+        document.getElementById("prev-close").innerText = a.昨收;
+
+        const changeEl = document.getElementById("change");
+        changeEl.innerText = a.漲跌幅 + " %";
+        changeEl.className =
+          "value " + (a.漲跌幅 >= 0 ? "trend-up" : "trend-down");
+
+        document.getElementById("ma").innerText =
+          "MA5：" + a.MA5 + " / MA20：" + a.MA20;
+        document.getElementById("volume").innerText = a.成交量;
+        document.getElementById("trend").innerText = a.趨勢分析;
+
+        let note = "";
+        if (a.漲跌幅 >= 3) {
+          note += "今日波動較大，請特別注意風險與停損控制。";
+        } else if (a.漲跌幅 <= -3) {
+          note += "出現明顯回檔，可觀察是否量縮止穩再考慮進場。";
+        } else {
+          note += "今日屬於一般波動區間，可搭配均線與成交量觀察。";
+        }
+        note += " MA5 與 MA20 的位置，可用來判斷短期是偏多、偏空或整理。";
+
+        document.getElementById("note").innerText = note;
+
+        card.style.display = "block";
+      } catch (e) {
+        errorDiv.innerText = "查詢失敗，請確認後端有執行 python app.py。";
+        errorDiv.style.display = "block";
+      }
+    }
+  </script>
+</body>
+</html>
